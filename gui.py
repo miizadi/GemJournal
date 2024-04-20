@@ -66,7 +66,6 @@ def openJournal(creationTime):
 def addJournal(event):
     journalButton = tk.Button(master=journalList, text="Unnamed Journal", borderwidth=0)
     journalButton.pack(side=tk.TOP, fill=tk.X)
-    journalButton.bind("<Button-1>", lambda event: addJournal(noteData["creationTime"]))
     title = "Unnamed Journal"
     creationTime = time.time()
     group = "NoGroup"
@@ -86,7 +85,7 @@ def loadExistingJournals():
     for noteData in totalJournalData:
         journalButton = tk.Button(master=journalList, text=noteData["title"], borderwidth=0)
         journalButton.pack(side=tk.TOP, fill=tk.X)
-        journalButton.bind("<Button-1>", lambda event: addJournal(noteData["creationTime"]))
+        journalButton.bind("<Button-1>", lambda event: openJournal(noteData["creationTime"]))
 
 
 loadExistingJournals()
