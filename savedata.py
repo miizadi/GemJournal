@@ -10,18 +10,18 @@ def saveNote(title, creationTime, group, body):
         "body": body
     }
 
-    fileName = "./saves/" + str(creationTime).replace(".", "") + ".json"
+    fileName = "./aoeusnthueoashtnauehtnsouaeshtn/" + str(creationTime).replace(".", "") + ".json"
 
     with open(fileName, "w") as file:
         json.dump(data, file)
 
 def readNotes():
-    noteFiles = [f for f in os.listdir("./saves")]
+    noteFiles = [f for f in os.listdir("aoeusnthueoashtnauehtnsouaeshtn")]
 
     totalData = []
 
     for path in noteFiles:
-        with open("./saves/" + path, "r") as file:
+        with open("./aoeusnthueoashtnauehtnsouaeshtn/" + path, "r") as file:
             data = json.load(file)
             totalData.append(data)
 
