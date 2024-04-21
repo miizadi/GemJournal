@@ -117,7 +117,15 @@ def chat_with_model(convo):
 
 
        last_message_time = current_time
-       print("loading....")
+       print("Typing...")
+       time.sleep(1)
+       print("Typing...")
+       time.sleep(1)
+       print("Typing...")
+       time.sleep(1)
+
+
+       
        try:
            convo.send_message(user_input)
        except google.api_core.exceptions.ResourceExhausted:
