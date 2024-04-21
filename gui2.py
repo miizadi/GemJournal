@@ -7,8 +7,10 @@ import tkinter as tk
 import sv_ttk
 import threading
 import time
-from savedata import saveNote, readNotes
+from savedata import saveNote, readNotes, deleteNote
 import chatbot
+from datetime import datetime
+from dateutil import tz
 
 totalJournalData = None
 
@@ -17,6 +19,7 @@ selectedTimestamp = None #probably causing a million bugs
 selectedButton = None # also causing a million bugs
 currentAIModel = None
 currentAIConvo = None
+sentContextThisConvo = False
 
 
 class main(tk.Tk):
@@ -33,9 +36,10 @@ class main(tk.Tk):
         self.leftSection.newButton.bind("<Button-1>", self.addJournal)
         self.rightSection.text_body.title_entry.bind("<KeyRelease>", self.autosave)
         self.rightSection.text_body.text.bind("<KeyRelease>", self.autosave)
+        self.leftSection.delete_button.bind("<Button-1>", self.deletingNote)
+        self.rightSection.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
         self.loadExistingJournals()
         sv_ttk.set_theme("dark")
-        self.rightSection.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
         self.mainloop()
 
     def autosave(self, event):
@@ -54,16 +58,21 @@ class main(tk.Tk):
 
     def highlightButton(self, button):
         for child in self.leftSection.winfo_children():
-            if child != self.leftSection.newButton and child != self.leftSection.search_bar:
+            if child != self.leftSection.newButton and child != self.leftSection.search_bar and child != self.leftSection.delete_button:
                 child.config(bg="#3d3d3d")
         button.config(bg="#1c1c1c")
-
     def openJournal(self, creationTime, buttonObject):
         global totalJournalData
         totalJournalData = readNotes()
         global selectedButton
         selectedButton = buttonObject
         self.highlightButton(selectedButton)
+
+        timestamp = datetime.utcfromtimestamp(creationTime).astimezone(tz.tzlocal()).strftime("%a %b %d, %Y %I:%M %p")
+        self.rightSection.text_body.timestampLabel.config(text=timestamp)
+
+
+
         for journalData in totalJournalData:
             print(journalData["creationTime"])
             if journalData["creationTime"] == creationTime:
@@ -82,7 +91,7 @@ class main(tk.Tk):
                 if journalData['body'].strip() != "Add body" or not journalData["body"]:
                     self.rightSection.text_body.text.configure(fg="white")
 
-                if journalData["body"] != "" and journalData["body"] != "\n":
+                if journalData["body"] == "" and journalData["body"] == "\n":
                     self.rightSection.text_body.text.delete("1.0", tk.END)
                     self.rightSection.text_body.text.insert("1.0", "Add body")
                     self.rightSection.text_body.text.config(fg="gray")
@@ -95,9 +104,14 @@ class main(tk.Tk):
                 self.rightSection.text_body.pack(padx = 30, pady = 20, side = tk.LEFT)
 
     def create_AI_chat_box(self, event):
+        global sentContextThisConvo
+        sentContextThisConvo = False
+        self.leftSection.delete_button.config(state=tk.DISABLED, text="Delete Note🔒")
+        self.leftSection.newButton.config(state = tk.DISABLED, text = "New Journal🔒")
         # record old note
         title_text = self.rightSection.text_body.title_entry.get()
         body_text = self.rightSection.text_body.text.get("1.0", tk.END)
+        timestamp_text = self.rightSection.text_body.timestampLabel.cget("text")
         # redo all of right section
         self.rightSection.scroller.destroy()
         self.rightSection.text_body.destroy()
@@ -117,6 +131,7 @@ class main(tk.Tk):
         self.rightSection.text_body.title_entry.insert(tk.END, title_text)
         self.rightSection.text_body.text.delete("1.0", tk.END)
         self.rightSection.text_body.text.insert(tk.END, body_text)
+        self.rightSection.text_body.timestampLabel.config(text=timestamp_text)
         self.rightSection.text_body.text["yscrollcommand"] = self.rightSection.scroller.set
         self.rightSection.scroller.config(command = self.rightSection.text_body.text.yview)
         self.rightSection.AI_chat.close_AI.bind("<Button-1>", self.close_AI_chat_box)
@@ -127,6 +142,8 @@ class main(tk.Tk):
         self.rightSection.initializeAI()
 
     def close_AI_chat_box(self, event):
+        self.leftSection.delete_button.config(state = tk.NORMAL, text = "Delete Note")
+        self.leftSection.delete_button.config(state = tk.NORMAL, text = "Add Journal")
         title_text = self.rightSection.text_body.title_entry.get()
         body_text = self.rightSection.text_body.text.get("1.0", tk.END)
         if self.rightSection.AI_chat:
@@ -166,12 +183,17 @@ class main(tk.Tk):
         totalJournalData = readNotes()
 
         for child in self.leftSection.winfo_children():
-            if child != self.leftSection.newButton and child != self.leftSection.search_bar:
+            if child != self.leftSection.newButton and child != self.leftSection.search_bar and child != self.leftSection.delete_button:
                 child.destroy()
 
         createdFirstButton = False
+        counter = 0
 
         for noteData in totalJournalData:
+
+            if counter >= 13:
+                break
+
             journalButton = tk.Button(master = self.leftSection, text = self.chaLim(noteData["title"]),
                                       borderwidth = 0, bg="#3d3d3d")
             journalButton.pack(side = tk.TOP, fill = tk.X)
@@ -180,6 +202,12 @@ class main(tk.Tk):
                 self.openJournal(noteData["creationTime"], journalButton)
 
             createdFirstButton = True
+            counter += 1
+    def deletingNote(self, event):
+        # delete from journal
+        print("Deleting note event")
+        deleteNote(selectedTimestamp)
+        self.loadExistingJournals()
 
 class LeftSection(tk.Frame):
     """
@@ -190,14 +218,21 @@ class LeftSection(tk.Frame):
         super().__init__(parent, bg="#3d3d3d")
         self.width = 230
         self.pack(side=tk.LEFT, fill=tk.Y)
-        self.search_bar = self.create_search_bar()
+        self.delete_button = self.create_delete_button()
         self.newButton = self.create_new_button()
+        self.search_bar = self.create_search_bar()
+
+
+    def create_delete_button(self):
+        newDelete = ttk.Button(master=self, text="Delete Note")
+        newDelete.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+        return newDelete
 
 
     def create_new_button(self):
         #GroupFrame -> NewJournalButton
         newJournalButton = ttk.Button(master=self, text="New Journal")
-        newJournalButton.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+        newJournalButton.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
         return newJournalButton
 
     def create_search_bar(self):
@@ -240,7 +275,7 @@ class AIChat(tk.Frame):
         self.pack(padx=10, side = tk.RIGHT, fill = tk.Y)
         self.button_frame = tk.Frame(master = self)
         self.button_frame.pack(pady = 5, side = tk.BOTTOM, fill = tk.X, expand = True)
-        self.chat_frame = tk.Frame(master=self)
+        self.chat_frame = tk.Frame(master=self, width=70)
         self.chat_frame.pack(side=tk.TOP, fill=tk.X, expand=True)
         self.display_frame = tk.Frame(master=self.chat_frame)
         self.display_frame.pack(side=tk.TOP, fill=tk.X)
@@ -260,14 +295,14 @@ class AIChat(tk.Frame):
 
     def create_chat_box(self):
         box = tk.Text(self.display_frame, state='disabled', yscrollcommand=self.scroller.set,
-                      font=("Arial", 10))
-        box.tag_configure('ai', justify = 'left')
+                      font=("Arial", 12), width=70)
+        box.tag_configure('ai', justify = 'left', foreground ="#4FC3F7")
         box.tag_config('user', justify = 'right')
         box.pack(pady = 10, side=tk.TOP, fill=tk.BOTH, expand=True)
         return box
 
     def create_messanger(self):
-        box = tk.Text(self.chat_frame,font=("Arial", 10))
+        box = tk.Text(self.chat_frame,font=("Arial", 12))
         box.pack(pady=5, side=tk.BOTTOM, fill=tk.BOTH, expand=True)
         return box
 
@@ -290,20 +325,33 @@ class AIChat(tk.Frame):
         self.chat_box.configure(state = 'disabled')
 
         totalJournalData = readNotes()
-        contextMessage = "Here is the content of the journal entries that I have done recently: \n"
-        for journalData in totalJournalData:
-            contextMessage += "\n"
-            contextMessage += "Title: " + journalData["title"] + "\n"
-            contextMessage += journalData["body"] + "\n"
 
-        contextMessage += "\nHere is what I am saying to you now: \n\""
+        contextMessage = ""
+
+        global sentContextThisConvo
+        if not sentContextThisConvo:
+            contextMessage = "Here is the content of the journal entries that I have done recently: \n"
+            for journalData in totalJournalData:
+                contextMessage += "\n"
+                contextMessage += "Title: " + journalData["title"] + "\n"
+                timestamp = datetime.utcfromtimestamp(journalData["creationTime"]).astimezone(tz.tzlocal()).strftime(
+                    "%a %b %d, %Y %I:%M %p")
+                contextMessage += "Creation Time: " + timestamp + "\n"
+                contextMessage += "Body: " + journalData["body"] + "\n"
+
+            contextMessage += "\nHere is what I am saying to you now: \n\""
+            sentContextThisConvo = True
+
+        else:
+            contextMessage = ""
+
         msg = contextMessage + msg + "\""
-
         print("sending response")
         print(msg)
-        currentAIConvo.send_message(msg)
-        response = currentAIConvo.last.text
-        self.display_AI_msg(response)
+        if currentAIConvo is not None:
+            currentAIConvo.send_message(msg)
+            response = currentAIConvo.last.text
+            self.display_AI_msg(response)
 
 
     def display_AI_msg(self, msg):
@@ -323,9 +371,12 @@ class TextBody(tk.Frame):
             self.pack(side=tk.BOTTOM, expand=False)
         self.pack(padx = 30, pady = 20, side = tk.LEFT)
         self.title_entry = self.create_title_entry()
+        self.timestampLabel = self.create_timestamp_label()
         if not AI:
             self.AIButton = self.create_ask_ai()
+
         self.text = self.create_body_text()
+        print(self.timestampLabel)
         self.title_entry.bind("<Button-1>", self.onTitleTextEntryClick)
         self.title_entry.bind("<FocusOut>", self.onTitleTextEntryUnfocus)
         self.text.bind("<Button-1>", self.onTextEntryClick)
@@ -364,8 +415,13 @@ class TextBody(tk.Frame):
         AIButton.pack(side= tk.RIGHT, anchor="ne", pady=(20, 0))
         return AIButton
 
+    def create_timestamp_label(self):
+        timestampLabel = ttk.Label(master=self, text="Timestamp")
+        timestampLabel.pack(side=tk.TOP, anchor="nw")
+        return timestampLabel
+
     def create_body_text(self):
-        entry = tk.Text(master=self, font=("Arial"), borderwidth=0, highlightthickness=0,
+        entry = tk.Text(master=self, font= "Arial", borderwidth=0, highlightthickness=0,
                         spacing1 = 8, spacing3 = 8, spacing2=5, fg="gray")
         entry.pack(side=tk.TOP, fill=tk.BOTH)
         entry.insert(tk.END, "Add body")

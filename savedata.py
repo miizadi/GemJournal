@@ -29,4 +29,8 @@ def readNotes():
 
     return totalData
 
-print(readNotes())
+def deleteNote(creationTime):
+    print("Deleting note")
+    fileName = "./saves/" + str(creationTime).replace(".", "") + ".json"
+    os.remove(fileName)
+
