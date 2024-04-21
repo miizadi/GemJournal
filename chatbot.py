@@ -5,6 +5,9 @@ import time
 
 
 
+
+
+
 # Function to configure the API
 def configure_api():
    api_key = "AIzaSyCClOIDU4EpWeBBM_0SG--Pp5mxWX2dEN8"
@@ -114,7 +117,7 @@ def chat_with_model(convo):
 
 
        last_message_time = current_time
-       print("typing....")
+       print("loading....")
        try:
            convo.send_message(user_input)
        except google.api_core.exceptions.ResourceExhausted:
