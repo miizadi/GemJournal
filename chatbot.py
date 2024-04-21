@@ -9,7 +9,7 @@ $ pip install google-generativeai
 
 
 
-
+# Import statements
 import google.generativeai as genai
 import time
 
@@ -19,13 +19,13 @@ import time
 
 
 
-
+# Initializing time intervals to prevent overuse error
 last_message_time = 0
 min_interval = 12  # Minimum time interval in seconds between messages
 
 
 
-
+# Initializing the api key
 genai.configure(api_key="AIzaSyCClOIDU4EpWeBBM_0SG--Pp5mxWX2dEN8")
 
 
@@ -41,7 +41,7 @@ generation_config = {
 
 
 
-
+# Saftey Settings
 safety_settings = [
 {
   "category": "HARM_CATEGORY_HARASSMENT",
@@ -63,19 +63,19 @@ safety_settings = [
 
 
 
-
+# Creating the generative model and adding it to model
 model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest",
                             generation_config=generation_config,
                             safety_settings=safety_settings)
 
 
 
-
+# Convo history
 convo = model.start_chat(history=[])
 
 
 
-
+# AI training towards the therapeutic friend/assistant
 prompt_parts = [
 "input: The user will ask questions If someone expresses feelings of loneliness with 'I feel like I have no one to talk to,' how would you respond to validate their feelings and encourage further sharing?",
 "output: You will answer as a caring individual that acts as a friend and really wants to help them It sounds like you're feeling isolated, which must be really hard. I’m here to listen to you. What do you think is making you feel this way?",
@@ -97,13 +97,14 @@ prompt_parts = [
 
 
 
-
+# Runs the AI Content Generation(Trains AI for assistant)
 model.generate_content(prompt_parts)
 
 
 
-
+# First message ensuring that the AI is a personal assistant
 convo.send_message("Your name is Gem and you are a personal assistant and a friend I can seek comfort in")
+
 # Chat Processing
 while True:
   user_input = input("You: ")
@@ -113,9 +114,12 @@ while True:
   if current_time - last_message_time < min_interval:
       print("Please wait a moment before sending another message.")
       continue
+
   last_message_time = current_time
   print("loading....")
+
   convo.send_message(user_input)
+
   if user_input.lower() == 'q':
       break
   else:
