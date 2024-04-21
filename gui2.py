@@ -26,7 +26,7 @@ class main(tk.Tk):
     def __init__(self):
         super().__init__()
         self.geometry("1280x600")
-        self.title("Pyrobib")
+        self.title("GemBook - Pyrobib")
         self.resizable(False, False)
         self.leftSection = LeftSection(self)
         self.rightSection = RightSection(self)
@@ -95,11 +95,13 @@ class main(tk.Tk):
                 self.rightSection.text_body.pack(padx = 30, pady = 20, side = tk.LEFT)
 
     def create_AI_chat_box(self, event):
+        # record old note
         title_text = self.rightSection.text_body.title_entry.get()
         body_text = self.rightSection.text_body.text.get("1.0", tk.END)
+        # redo all of right section
         self.rightSection.scroller.destroy()
         self.rightSection.text_body.destroy()
-        self.rightSection.AI_chat = AIChat(self)
+        self.rightSection.AI_chat = AIChat(self.rightSection)
         self.rightSection.scroller = self.rightSection.create_scroll()
         self.rightSection.text_body = TextBody(self, True)
         self.rightSection.text_body.text.bind("<Button-1>", self.autosave)
@@ -117,8 +119,33 @@ class main(tk.Tk):
         self.rightSection.text_body.text.insert(tk.END, body_text)
         self.rightSection.text_body.text["yscrollcommand"] = self.rightSection.scroller.set
         self.rightSection.scroller.config(command = self.rightSection.text_body.text.yview)
-        self.rightSection.AI_chat.close_AI.bind("<Button-1>", self.rightSection.close_AI_chat_box)
+        self.rightSection.AI_chat.close_AI.bind("<Button-1>", self.close_AI_chat_box)
+        # user cannot edit note while chatting with AI
+        self.rightSection.text_body.text.configure(state = 'disabled')
+        self.rightSection.text_body.title_entry.configure(disabledbackground="#1c1c1c", state = 'disabled',
+                                                          disabledforeground="white")
         self.rightSection.initializeAI()
+
+    def close_AI_chat_box(self, event):
+        title_text = self.rightSection.text_body.title_entry.get()
+        body_text = self.rightSection.text_body.text.get("1.0", tk.END)
+        if self.rightSection.AI_chat:
+            self.rightSection.AI_chat.destroy()
+        self.rightSection.text_body.destroy()
+        self.rightSection.text_body = TextBody(self, False)
+        self.rightSection.text_body.text["yscrollcommand"] = self.rightSection.scroller.set
+        self.rightSection.scroller.config(command = self.rightSection.text_body.text.yview)
+        self.rightSection.text_body.title_entry.delete(0, tk.END)
+        if title_text != "Add Title":
+            self.rightSection.text_body.title_entry.configure(fg = "white")
+        if body_text.strip() != "Add body":
+            self.rightSection.text_body.text.configure(fg = "white")
+        self.rightSection.text_body.title_entry.insert(tk.END, title_text)
+        self.rightSection.text_body.text.delete("1.0", tk.END)
+        self.rightSection.text_body.text.insert(tk.END, body_text)
+        self.rightSection.text_body.text["yscrollcommand"] = self.rightSection.scroller.set
+        self.rightSection.scroller.config(command = self.rightSection.text_body.text.yview)
+        self.rightSection.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
 
     def addJournal(self, event):
         #journalButton = tk.Button(master = self.leftSection, text = "Unnamed Journal", borderwidth = 0, bg="")
@@ -188,6 +215,7 @@ class RightSection(tk.Frame):
         self.text_body = TextBody(self, False)
         self.text_body.text["yscrollcommand"] = self.scroller.set
         self.scroller.config(command = self.text_body.text.yview)
+        self.AI_chat = None
 
 
     def initializeAI(self):
@@ -198,26 +226,6 @@ class RightSection(tk.Frame):
         chatbot.ai_prompt_training(currentAIModel)
         global currentAIConvo
         currentAIConvo = chatbot.start_conversation(currentAIModel)
-
-    def close_AI_chat_box(self, event):
-        title_text = self.text_body.title_entry.get()
-        body_text = self.text_body.text.get("1.0", tk.END)
-        self.AI_chat.destroy()
-        self.text_body.destroy()
-        self.text_body = TextBody(self, False)
-        self.text_body.text["yscrollcommand"] = self.scroller.set
-        self.scroller.config(command = self.text_body.text.yview)
-        self.text_body.title_entry.delete(0, tk.END)
-        if title_text != "Add Title":
-            self.text_body.title_entry.configure(fg = "white")
-        if body_text.strip() != "Add body":
-            self.text_body.text.configure(fg = "white")
-        self.text_body.title_entry.insert(tk.END, title_text)
-        self.text_body.text.delete("1.0", tk.END)
-        self.text_body.text.insert(tk.END, body_text)
-        self.text_body.text["yscrollcommand"] = self.scroller.set
-        self.scroller.config(command = self.text_body.text.yview)
-        self.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
 
     def create_scroll(self):
         # Scrollbar
