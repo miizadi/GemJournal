@@ -41,14 +41,25 @@ class main(tk.Tk):
         self.rightSection.text_body.title_entry.get(), selectedTimestamp, "NoGroup",
             self.rightSection.text_body.text.get("1.0", tk.END)))
         thread.start()
-        selectedButton.config(text = self.rightSection.text_body.title_entry.get())
+        selectedButton.config(text = self.chaLim(self.rightSection.text_body.title_entry.get()))
 
+    def chaLim(self, string):
+        if len(string) > 20:
+            return string[:20] + "..."
+        return string
+
+    def highlightButton(self, button):
+        for child in self.leftSection.winfo_children():
+            if child != self.leftSection.newButton and child != self.leftSection.search_bar:
+                child.config(bg="#1c1c1c")
+        button.config(bg="#7ac7fa")
 
     def openJournal(self, creationTime, buttonObject):
         global totalJournalData
         totalJournalData = readNotes()
         global selectedButton
         selectedButton = buttonObject
+        self.highlightButton(selectedButton)
         for journalData in totalJournalData:
             print(journalData["creationTime"])
             if journalData["creationTime"] == creationTime:
@@ -63,23 +74,21 @@ class main(tk.Tk):
                 else:
                     self.rightSection.text_body.title_entry.configure(fg = "gray")
                     self.rightSection.text_body.title_entry.insert(tk.END, "Add Title")
-
+                if journalData['body'].strip() != "Add body" or not journalData["body"]:
+                    self.rightSection.text_body.text.configure(fg="white")
                 self.rightSection.text_body.text.delete("1.0", tk.END)
                 self.rightSection.text_body.text.insert("1.0", journalData["body"])
                 self.rightSection.text_body.pack(padx = 30, pady = 20, side = tk.LEFT)
 
     def addJournal(self, event):
-        journalButton = tk.Button(master = self.leftSection, text = "Unnamed Journal", borderwidth = 0)
-        journalButton.pack(side = tk.TOP, fill = tk.X)
+        #journalButton = tk.Button(master = self.leftSection, text = "Unnamed Journal", borderwidth = 0, bg="")
+        #journalButton.pack(side = tk.TOP, fill = tk.X)
         title = "Unnamed Journal"
         creationTime = time.time()
         group = "NoGroup"
         body = ""
         saveNote(title, creationTime, group, body)
-        global totalJournalData
-        totalJournalData = readNotes()
-        print(creationTime)
-        self.openJournal(creationTime, journalButton)
+        self.loadExistingJournals() # this will automatically open the new journal
 
     def lambdaMaker(self, thing, buttonObject):
         return lambda e: self.openJournal(thing, buttonObject)
@@ -89,10 +98,14 @@ class main(tk.Tk):
         global totalJournalData
         totalJournalData = readNotes()
 
+        for child in self.leftSection.winfo_children():
+            if child != self.leftSection.newButton and child != self.leftSection.search_bar:
+                child.destroy()
+
         createdFirstButton = False
 
         for noteData in totalJournalData:
-            journalButton = tk.Button(master = self.leftSection, text = noteData["title"],
+            journalButton = tk.Button(master = self.leftSection, text = self.chaLim(noteData["title"]),
                                       borderwidth = 0)
             journalButton.pack(side = tk.TOP, fill = tk.X)
             journalButton.bind("<Button-1>", self.lambdaMaker(noteData["creationTime"], journalButton))
@@ -100,8 +113,6 @@ class main(tk.Tk):
                 self.openJournal(noteData["creationTime"], journalButton)
 
             createdFirstButton = True
-
-
 
 class LeftSection(tk.Frame):
     """
@@ -134,9 +145,47 @@ class RightSection(tk.Frame):
         super().__init__(parent)
         self.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         self.scroller = self.create_scroll()
-        self.text_body = TextBody(self)
+        self.text_body = TextBody(self, False)
         self.text_body.text["yscrollcommand"] = self.scroller.set
         self.scroller.config(command = self.text_body.text.yview)
+        self.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
+
+    def create_AI_chat_box(self, event):
+        title_text = self.text_body.title_entry.get()
+        body_text = self.text_body.text.get("1.0", tk.END)
+        self.text_body.destroy()
+        self.AI_chat = AIChat(self)
+        self.text_body = TextBody(self, True)
+        self.text_body.title_entry.delete(0, tk.END)
+        if title_text != "Add Title":
+            self.text_body.title_entry.configure(fg = "white")
+        if body_text.strip() != "Add body":
+            self.text_body.text.configure(fg = "white")
+        self.text_body.title_entry.insert(tk.END, title_text)
+        self.text_body.text.delete("1.0", tk.END)
+        self.text_body.text.insert(tk.END, body_text)
+        self.text_body.text["yscrollcommand"] = self.scroller.set
+        self.scroller.config(command = self.text_body.text.yview)
+        self.AI_chat.close_AI.bind("<Button-1>", self.close_AI_chat_box)
+
+    def close_AI_chat_box(self, event):
+        title_text = self.text_body.title_entry.get()
+        body_text = self.text_body.text.get("1.0", tk.END)
+        self.AI_chat.destroy()
+        self.text_body.destroy()
+        self.text_body = TextBody(self, False)
+        self.text_body.title_entry.delete(0, tk.END)
+        if title_text != "Add Title":
+            self.text_body.title_entry.configure(fg = "white")
+        if body_text.strip() != "Add body":
+            self.text_body.text.configure(fg = "white")
+        self.text_body.title_entry.insert(tk.END, title_text)
+        self.text_body.text.delete("1.0", tk.END)
+        self.text_body.text.insert(tk.END, body_text)
+        self.text_body.text["yscrollcommand"] = self.scroller.set
+        self.scroller.config(command = self.text_body.text.yview)
+        self.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
+
 
     def create_scroll(self):
         # Scrollbar
@@ -145,18 +194,58 @@ class RightSection(tk.Frame):
         return scrollbar
 
 
-class TextBody(tk.Frame):
+class AIChat(tk.Frame):
     def __init__(self, parent):
-        super().__init__(parent)
-        self.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        super().__init__(parent, width=100)
+        self.pack(side = tk.RIGHT, fill = tk.Y)
+        self.button_frame = tk.Frame(master = self)
+        self.button_frame.pack(pady = 5, side = tk.BOTTOM, fill = tk.X, expand = True)
+        self.chat_frame = tk.Frame(master=self)
+        self.chat_frame.pack(side=tk.TOP, fill=tk.X, expand=True)
+        self.chat_box = self.create_chat_box()
+        self.msg_box = self.create_messanger()
+        self.close_AI = self.create_close_AI()
+        self.send_msg = self.create_send_msg()
+
+
+    def create_chat_box(self):
+        box = tk.Text(self.chat_frame, state='disabled')
+        box.pack(pady = 10, side=tk.TOP, fill=tk.BOTH, expand=True)
+        return box
+
+    def create_messanger(self):
+        box = tk.Text(self.chat_frame)
+        box.pack(pady=5, side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        return box
+
+    def create_close_AI(self):
+        AIButton = ttk.Button(master=self.button_frame, text="Goodbye AI")
+        AIButton.pack(pady=5, side= tk.LEFT)
+        return AIButton
+
+    def create_send_msg(self):
+        button = ttk.Button(self.button_frame, text="Send")
+        button.pack(pady=5, side=tk.RIGHT)
+        return button
+
+class TextBody(tk.Frame):
+    def __init__(self, parent, AI):
+        if not AI:
+            super().__init__(parent)
+            self.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        else:
+            super().__init__(parent, width=50)
+            self.pack(side=tk.BOTTOM, expand=False)
         self.pack(padx = 30, pady = 20, side = tk.LEFT)
         self.title_entry = self.create_title_entry()
-        self.AIButton = self.create_ask_ai()
+        if not AI:
+            self.AIButton = self.create_ask_ai()
         self.text = self.create_body_text()
         self.title_entry.bind("<Button-1>", self.onTitleTextEntryClick)
         self.title_entry.bind("<FocusOut>", self.onTitleTextEntryUnfocus)
         self.text.bind("<Button-1>", self.onTextEntryClick)
         self.text.bind("<FocusOut>", self.onTextEntryUnfocus)
+        self.AI_chat = None
 
     def create_title_entry(self):
         #TextEntryFrame -> titleEntry
