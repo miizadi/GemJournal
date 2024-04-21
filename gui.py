@@ -10,7 +10,9 @@ import time
 from savedata import saveNote, readNotes
 
 totalJournalData = None
+
 journalButtonPointsToTimestamp = {} #this is so stupid
+selectedTimestamp = None #probably causing a million bugs
 
 root = tk.Tk()
 
@@ -26,7 +28,7 @@ groupFrame.pack(side=tk.LEFT, fill=tk.Y)
 groupSearchBar = ttk.Entry(master=groupFrame)
 groupSearchBar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=16)
 
-#GroupFrame -> NoteList
+#GroupFrame -> JournalList
 journalList = tk.Frame(master=groupFrame)
 journalList.pack(side=tk.TOP, fill=tk.BOTH)
 
@@ -59,7 +61,29 @@ bodyTextEntry.pack(fill=tk.BOTH, side=tk.TOP)
 
 
 def openJournal(creationTime):
-    print(creationTime)
+
+    global totalJournalData
+    totalJournalData = readNotes()
+
+    for journalData in totalJournalData:
+        print(journalData["creationTime"])
+        if journalData["creationTime"] == creationTime:
+            print("found it")
+            global selectedTimestamp
+            selectedTimestamp = journalData["creationTime"]
+            titleTextEntry.delete(0, tk.END)
+
+
+            if journalData["title"] != "Unnamed Journal":
+                titleTextEntry.configure(fg="white")
+                titleTextEntry.insert(tk.END, journalData["title"])
+            else:
+                titleTextEntry.configure(fg="gray")
+                titleTextEntry.insert(tk.END, "Add Title")
+
+            bodyTextEntry.delete("1.0", tk.END)
+            bodyTextEntry.insert("1.0", journalData["body"])
+            textEntryFrame.pack(padx=30, pady=20, side=tk.LEFT)
 
 #On Note Add:
 #GroupFrame -> NoteList -> NoteButton
@@ -70,23 +94,40 @@ def addJournal(event):
     creationTime = time.time()
     group = "NoGroup"
     body = ""
-    titleTextEntry.delete(0, tk.END)
-    titleTextEntry.insert(tk.END, "Add Title")
-    bodyTextEntry.delete("1.0", tk.END)
-    textEntryFrame.pack(padx = 30, pady = 20, side=tk.LEFT)
-    thread = threading.Thread(target=saveNote, args=(title, creationTime, group, body))
-    thread.start()
+    saveNote(title, creationTime, group, body)
+    global totalJournalData
+    totalJournalData = readNotes()
+    print(creationTime)
+    openJournal(creationTime)
 
 newJournalButton.bind("<Button-1>", addJournal)
 
+
+def lambdaMaker(thing):
+    return lambda e: openJournal(thing)
+
 #Load existing notes
 def loadExistingJournals():
+    global totalJournalData
     totalJournalData = readNotes()
+
+    for child in journalList.winfo_children():
+        child.pack_forget()
+
     for noteData in totalJournalData:
         journalButton = tk.Button(master=journalList, text=noteData["title"], borderwidth=0)
         journalButton.pack(side=tk.TOP, fill=tk.X)
-        journalButton.bind("<Button-1>", lambda event: openJournal(noteData["creationTime"]))
+        journalButton.bind("<Button-1>", lambdaMaker(noteData["creationTime"]))
 
+#autosave
+def autosave(event):
+    thread = threading.Thread(target=saveNote, args=(titleTextEntry.get(), selectedTimestamp, "NoGroup", bodyTextEntry.get("1.0", tk.END)))
+    thread.start()
+    loadExistingJournals()
+
+
+titleTextEntry.bind("<KeyRelease>", autosave)
+bodyTextEntry.bind("<KeyRelease>", autosave)
 
 loadExistingJournals()
 scrollbar.config(command=bodyTextEntry.yview)
