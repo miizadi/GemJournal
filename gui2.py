@@ -51,8 +51,8 @@ class main(tk.Tk):
     def highlightButton(self, button):
         for child in self.leftSection.winfo_children():
             if child != self.leftSection.newButton and child != self.leftSection.search_bar:
-                child.config(bg="#1c1c1c")
-        button.config(bg="#7ac7fa")
+                child.config(bg="#3d3d3d")
+        button.config(bg="#1c1c1c")
 
     def openJournal(self, creationTime, buttonObject):
         global totalJournalData
@@ -74,6 +74,7 @@ class main(tk.Tk):
                 else:
                     self.rightSection.text_body.title_entry.configure(fg = "gray")
                     self.rightSection.text_body.title_entry.insert(tk.END, "Add Title")
+
                 if journalData['body'].strip() != "Add body" or not journalData["body"]:
                     self.rightSection.text_body.text.configure(fg="white")
                 self.rightSection.text_body.text.delete("1.0", tk.END)
@@ -106,7 +107,7 @@ class main(tk.Tk):
 
         for noteData in totalJournalData:
             journalButton = tk.Button(master = self.leftSection, text = self.chaLim(noteData["title"]),
-                                      borderwidth = 0)
+                                      borderwidth = 0, bg="#3d3d3d")
             journalButton.pack(side = tk.TOP, fill = tk.X)
             journalButton.bind("<Button-1>", self.lambdaMaker(noteData["creationTime"], journalButton))
             if not createdFirstButton:
@@ -153,9 +154,13 @@ class RightSection(tk.Frame):
     def create_AI_chat_box(self, event):
         title_text = self.text_body.title_entry.get()
         body_text = self.text_body.text.get("1.0", tk.END)
+        self.scroller.destroy()
         self.text_body.destroy()
         self.AI_chat = AIChat(self)
+        self.scroller = self.create_scroll()
         self.text_body = TextBody(self, True)
+        self.text_body.text["yscrollcommand"] = self.scroller.set
+        self.scroller.config(command = self.text_body.text.yview)
         self.text_body.title_entry.delete(0, tk.END)
         if title_text != "Add Title":
             self.text_body.title_entry.configure(fg = "white")
@@ -174,6 +179,8 @@ class RightSection(tk.Frame):
         self.AI_chat.destroy()
         self.text_body.destroy()
         self.text_body = TextBody(self, False)
+        self.text_body.text["yscrollcommand"] = self.scroller.set
+        self.scroller.config(command = self.text_body.text.yview)
         self.text_body.title_entry.delete(0, tk.END)
         if title_text != "Add Title":
             self.text_body.title_entry.configure(fg = "white")
@@ -197,24 +204,34 @@ class RightSection(tk.Frame):
 class AIChat(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, width=100)
-        self.pack(side = tk.RIGHT, fill = tk.Y)
+        self.pack(padx=10, side = tk.RIGHT, fill = tk.Y)
         self.button_frame = tk.Frame(master = self)
         self.button_frame.pack(pady = 5, side = tk.BOTTOM, fill = tk.X, expand = True)
         self.chat_frame = tk.Frame(master=self)
         self.chat_frame.pack(side=tk.TOP, fill=tk.X, expand=True)
+        self.display_frame = tk.Frame(master=self.chat_frame)
+        self.display_frame.pack(side=tk.TOP, fill=tk.X)
+        self.scroller = self.create_scroller()
         self.chat_box = self.create_chat_box()
+        self.scroller.config(command = self.chat_box.yview)
         self.msg_box = self.create_messanger()
         self.close_AI = self.create_close_AI()
         self.send_msg = self.create_send_msg()
 
 
+    def create_scroller(self):
+        scroller = ttk.Scrollbar(master=self.display_frame)
+        scroller.pack(side=tk.RIGHT, fill=tk.Y)
+        return scroller
+
     def create_chat_box(self):
-        box = tk.Text(self.chat_frame, state='disabled')
+        box = tk.Text(self.display_frame, state='disabled', yscrollcommand=self.scroller.set,
+                      font=("Arial", 10))
         box.pack(pady = 10, side=tk.TOP, fill=tk.BOTH, expand=True)
         return box
 
     def create_messanger(self):
-        box = tk.Text(self.chat_frame)
+        box = tk.Text(self.chat_frame,font=("Arial", 10))
         box.pack(pady=5, side=tk.BOTTOM, fill=tk.BOTH, expand=True)
         return box
 
