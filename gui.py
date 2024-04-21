@@ -13,6 +13,7 @@ totalJournalData = None
 
 journalButtonPointsToTimestamp = {} #this is so stupid
 selectedTimestamp = None #probably causing a million bugs
+selectedButton = None # also causing a million bugs
 
 root = tk.Tk()
 
@@ -60,10 +61,12 @@ bodyTextEntry.pack(fill=tk.BOTH, side=tk.TOP)
 #textEntryFrame.pack(padx=30, pady=20, side=tk.LEFT)
 
 
-def openJournal(creationTime):
+def openJournal(creationTime, buttonObject):
 
     global totalJournalData
     totalJournalData = readNotes()
+    global selectedButton
+    selectedButton = buttonObject
 
     for journalData in totalJournalData:
         print(journalData["creationTime"])
@@ -103,27 +106,24 @@ def addJournal(event):
 newJournalButton.bind("<Button-1>", addJournal)
 
 
-def lambdaMaker(thing):
-    return lambda e: openJournal(thing)
+def lambdaMaker(thing, buttonObject):
+    return lambda e: openJournal(thing, buttonObject)
 
 #Load existing notes
 def loadExistingJournals():
     global totalJournalData
     totalJournalData = readNotes()
 
-    for child in journalList.winfo_children():
-        child.pack_forget()
-
     for noteData in totalJournalData:
         journalButton = tk.Button(master=journalList, text=noteData["title"], borderwidth=0)
         journalButton.pack(side=tk.TOP, fill=tk.X)
-        journalButton.bind("<Button-1>", lambdaMaker(noteData["creationTime"]))
+        journalButton.bind("<Button-1>", lambdaMaker(noteData["creationTime"], journalButton))
 
 #autosave
 def autosave(event):
     thread = threading.Thread(target=saveNote, args=(titleTextEntry.get(), selectedTimestamp, "NoGroup", bodyTextEntry.get("1.0", tk.END)))
     thread.start()
-    loadExistingJournals()
+    selectedButton.config(text=titleTextEntry.get())
 
 
 titleTextEntry.bind("<KeyRelease>", autosave)
