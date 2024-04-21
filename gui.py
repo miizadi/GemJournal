@@ -84,6 +84,8 @@ def openJournal(creationTime, buttonObject):
                 titleTextEntry.configure(fg="gray")
                 titleTextEntry.insert(tk.END, "Add Title")
 
+            if journalData["body"] != "\n" and journalData["body"] != "":
+
             bodyTextEntry.delete("1.0", tk.END)
             bodyTextEntry.insert("1.0", journalData["body"])
             textEntryFrame.pack(padx=30, pady=20, side=tk.LEFT)

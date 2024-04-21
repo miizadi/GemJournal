@@ -8,12 +8,15 @@ import sv_ttk
 import threading
 import time
 from savedata import saveNote, readNotes
+import chatbot
 
 totalJournalData = None
 
 journalButtonPointsToTimestamp = {} #this is so stupid
 selectedTimestamp = None #probably causing a million bugs
 selectedButton = None # also causing a million bugs
+currentAIModel = None
+currentAIConvo = None
 
 
 class main(tk.Tk):
@@ -32,6 +35,7 @@ class main(tk.Tk):
         self.rightSection.text_body.text.bind("<KeyRelease>", self.autosave)
         self.loadExistingJournals()
         sv_ttk.set_theme("dark")
+        self.rightSection.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
         self.mainloop()
 
     def autosave(self, event):
@@ -77,9 +81,44 @@ class main(tk.Tk):
 
                 if journalData['body'].strip() != "Add body" or not journalData["body"]:
                     self.rightSection.text_body.text.configure(fg="white")
-                self.rightSection.text_body.text.delete("1.0", tk.END)
-                self.rightSection.text_body.text.insert("1.0", journalData["body"])
+
+                if journalData["body"] != "" and journalData["body"] != "\n":
+                    self.rightSection.text_body.text.delete("1.0", tk.END)
+                    self.rightSection.text_body.text.insert("1.0", "Add body")
+                    self.rightSection.text_body.text.config(fg="gray")
+                else:
+                    self.rightSection.text_body.text.delete("1.0", tk.END)
+                    self.rightSection.text_body.text.insert("1.0", journalData["body"])
+                    self.rightSection.text_body.text.config(fg="white")
+
+
                 self.rightSection.text_body.pack(padx = 30, pady = 20, side = tk.LEFT)
+
+    def create_AI_chat_box(self, event):
+        title_text = self.rightSection.text_body.title_entry.get()
+        body_text = self.rightSection.text_body.text.get("1.0", tk.END)
+        self.rightSection.scroller.destroy()
+        self.rightSection.text_body.destroy()
+        self.rightSection.AI_chat = AIChat(self)
+        self.rightSection.scroller = self.rightSection.create_scroll()
+        self.rightSection.text_body = TextBody(self, True)
+        self.rightSection.text_body.text.bind("<Button-1>", self.autosave)
+        self.rightSection.text_body.title_entry.bind("<Button-1>", self.autosave)
+        self.rightSection.text_body.text["yscrollcommand"] = self.rightSection.scroller.set
+
+        self.rightSection.scroller.config(command = self.rightSection.text_body.text.yview)
+        self.rightSection.text_body.title_entry.delete(0, tk.END)
+        if title_text != "Add Title":
+            self.rightSection.text_body.title_entry.configure(fg = "white")
+        if body_text.strip() != "Add body":
+            self.rightSection.text_body.text.configure(fg = "white")
+        self.rightSection.text_body.title_entry.insert(tk.END, title_text)
+        self.rightSection.text_body.text.delete("1.0", tk.END)
+        self.rightSection.text_body.text.insert(tk.END, body_text)
+        self.rightSection.text_body.text["yscrollcommand"] = self.rightSection.scroller.set
+        self.rightSection.scroller.config(command = self.rightSection.text_body.text.yview)
+        self.rightSection.AI_chat.close_AI.bind("<Button-1>", self.rightSection.close_AI_chat_box)
+        self.rightSection.initializeAI()
 
     def addJournal(self, event):
         #journalButton = tk.Button(master = self.leftSection, text = "Unnamed Journal", borderwidth = 0, bg="")
@@ -149,29 +188,16 @@ class RightSection(tk.Frame):
         self.text_body = TextBody(self, False)
         self.text_body.text["yscrollcommand"] = self.scroller.set
         self.scroller.config(command = self.text_body.text.yview)
-        self.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
 
-    def create_AI_chat_box(self, event):
-        title_text = self.text_body.title_entry.get()
-        body_text = self.text_body.text.get("1.0", tk.END)
-        self.scroller.destroy()
-        self.text_body.destroy()
-        self.AI_chat = AIChat(self)
-        self.scroller = self.create_scroll()
-        self.text_body = TextBody(self, True)
-        self.text_body.text["yscrollcommand"] = self.scroller.set
-        self.scroller.config(command = self.text_body.text.yview)
-        self.text_body.title_entry.delete(0, tk.END)
-        if title_text != "Add Title":
-            self.text_body.title_entry.configure(fg = "white")
-        if body_text.strip() != "Add body":
-            self.text_body.text.configure(fg = "white")
-        self.text_body.title_entry.insert(tk.END, title_text)
-        self.text_body.text.delete("1.0", tk.END)
-        self.text_body.text.insert(tk.END, body_text)
-        self.text_body.text["yscrollcommand"] = self.scroller.set
-        self.scroller.config(command = self.text_body.text.yview)
-        self.AI_chat.close_AI.bind("<Button-1>", self.close_AI_chat_box)
+
+    def initializeAI(self):
+        # set up AI
+        global currentAIModel
+        chatbot.configure_api()
+        currentAIModel = chatbot.initialize_model()
+        chatbot.ai_prompt_training(currentAIModel)
+        global currentAIConvo
+        currentAIConvo = chatbot.start_conversation(currentAIModel)
 
     def close_AI_chat_box(self, event):
         title_text = self.text_body.title_entry.get()
@@ -192,7 +218,6 @@ class RightSection(tk.Frame):
         self.text_body.text["yscrollcommand"] = self.scroller.set
         self.scroller.config(command = self.text_body.text.yview)
         self.text_body.AIButton.bind("<Button-1>", self.create_AI_chat_box)
-
 
     def create_scroll(self):
         # Scrollbar
@@ -216,7 +241,8 @@ class AIChat(tk.Frame):
         self.scroller.config(command = self.chat_box.yview)
         self.msg_box = self.create_messanger()
         self.close_AI = self.create_close_AI()
-        self.send_msg = self.create_send_msg()
+        self.send_msg_button = self.create_send_msg()
+        self.send_msg_button.bind("<Button-1>", self.send_msg)
 
 
     def create_scroller(self):
@@ -227,6 +253,8 @@ class AIChat(tk.Frame):
     def create_chat_box(self):
         box = tk.Text(self.display_frame, state='disabled', yscrollcommand=self.scroller.set,
                       font=("Arial", 10))
+        box.tag_configure('ai', justify = 'left')
+        box.tag_config('user', justify = 'right')
         box.pack(pady = 10, side=tk.TOP, fill=tk.BOTH, expand=True)
         return box
 
@@ -244,6 +272,38 @@ class AIChat(tk.Frame):
         button = ttk.Button(self.button_frame, text="Send")
         button.pack(pady=5, side=tk.RIGHT)
         return button
+
+    def send_msg(self, event):
+        msg = self.msg_box.get("1.0", tk.END)
+        self.msg_box.delete("1.0", tk.END)
+        timed_msg = time.ctime(time.time()) + "\n" + msg + "\n"
+        self.chat_box.configure(state = 'normal')
+        self.chat_box.insert(tk.END, timed_msg, 'user')
+        self.chat_box.configure(state = 'disabled')
+
+        totalJournalData = readNotes()
+        contextMessage = "Here is the content of the journal entries that I have done recently: \n"
+        for journalData in totalJournalData:
+            contextMessage += "\n"
+            contextMessage += "Title: " + journalData["title"] + "\n"
+            contextMessage += journalData["body"] + "\n"
+
+        contextMessage += "\nHere is what I am saying to you now: \n\""
+        msg = contextMessage + msg + "\""
+
+        print("sending response")
+        print(msg)
+        currentAIConvo.send_message(msg)
+        response = currentAIConvo.last.text
+        self.display_AI_msg(response)
+
+
+    def display_AI_msg(self, msg):
+        timed_msg = time.ctime(time.time()) + "\n" + msg + "\n"
+        self.chat_box.configure(state = 'normal')
+        self.chat_box.insert(tk.END, timed_msg, 'ai')
+        self.chat_box.configure(state = 'disabled')
+
 
 class TextBody(tk.Frame):
     def __init__(self, parent, AI):
@@ -302,8 +362,6 @@ class TextBody(tk.Frame):
         entry.pack(side=tk.TOP, fill=tk.BOTH)
         entry.insert(tk.END, "Add body")
         return entry
-
-
 
 
 if __name__ == "__main__":
