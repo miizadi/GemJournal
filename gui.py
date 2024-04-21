@@ -101,7 +101,7 @@ def addJournal(event):
     global totalJournalData
     totalJournalData = readNotes()
     print(creationTime)
-    openJournal(creationTime)
+    openJournal(creationTime, journalButton)
 
 newJournalButton.bind("<Button-1>", addJournal)
 

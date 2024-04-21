@@ -35,11 +35,14 @@ class main(tk.Tk):
         self.mainloop()
 
     def autosave(self, event):
+        if selectedButton is None or selectedTimestamp is None:
+            return
         thread = threading.Thread(target = saveNote, args = (
         self.rightSection.text_body.title_entry.get(), selectedTimestamp, "NoGroup",
             self.rightSection.text_body.text.get("1.0", tk.END)))
         thread.start()
         selectedButton.config(text = self.rightSection.text_body.title_entry.get())
+
 
     def openJournal(self, creationTime, buttonObject):
         global totalJournalData
@@ -66,7 +69,7 @@ class main(tk.Tk):
                 self.rightSection.text_body.pack(padx = 30, pady = 20, side = tk.LEFT)
 
     def addJournal(self, event):
-        journalButton = tk.Button(master = self, text = "Unnamed Journal", borderwidth = 0)
+        journalButton = tk.Button(master = self.leftSection, text = "Unnamed Journal", borderwidth = 0)
         journalButton.pack(side = tk.TOP, fill = tk.X)
         title = "Unnamed Journal"
         creationTime = time.time()
@@ -86,11 +89,18 @@ class main(tk.Tk):
         global totalJournalData
         totalJournalData = readNotes()
 
+        createdFirstButton = False
+
         for noteData in totalJournalData:
             journalButton = tk.Button(master = self.leftSection, text = noteData["title"],
                                       borderwidth = 0)
             journalButton.pack(side = tk.TOP, fill = tk.X)
             journalButton.bind("<Button-1>", self.lambdaMaker(noteData["creationTime"], journalButton))
+            if not createdFirstButton:
+                self.openJournal(noteData["creationTime"], journalButton)
+
+            createdFirstButton = True
+
 
 
 class LeftSection(tk.Frame):
@@ -103,7 +113,6 @@ class LeftSection(tk.Frame):
         self.width = 230
         self.pack(side=tk.LEFT, fill=tk.Y)
         self.search_bar = self.create_search_bar()
-        #self.notesList = self.create_notes_list()
         self.newButton = self.create_new_button()
 
 
@@ -118,12 +127,6 @@ class LeftSection(tk.Frame):
         groupSearchBar = ttk.Entry(master=self)
         groupSearchBar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=16)
         return groupSearchBar
-
-    def create_notes_list(self):
-        # create the treeview of list of journals
-        journalList = ttk.Treeview(master=self)
-        journalList.pack(side=tk.TOP, fill=tk.BOTH)
-        return journalList
 
 
 class RightSection(tk.Frame):
@@ -146,22 +149,41 @@ class TextBody(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        self.pack(padx = 30, pady = 20, side = tk.LEFT)
         self.title_entry = self.create_title_entry()
         self.AIButton = self.create_ask_ai()
         self.text = self.create_body_text()
         self.title_entry.bind("<Button-1>", self.onTitleTextEntryClick)
+        self.title_entry.bind("<FocusOut>", self.onTitleTextEntryUnfocus)
+        self.text.bind("<Button-1>", self.onTextEntryClick)
+        self.text.bind("<FocusOut>", self.onTextEntryUnfocus)
 
     def create_title_entry(self):
         #TextEntryFrame -> titleEntry
         entry = tk.Entry(master=self, font=("Arial", 16, "bold"), fg="gray", borderwidth=0, highlightthickness=0)
-        entry.pack(side=tk.TOP, fill=tk.BOTH)
+        entry.pack(side=tk.TOP, fill=tk.BOTH, pady=(0, 10))
         entry.insert(tk.END,"Add Title")
         return entry
 
     def onTitleTextEntryClick(self,event):  # clear Add Title text on focus
-        self.title_entry.delete(0, tk.END)
-        self.title_entry.configure(fg = "red")
+        if self.title_entry.get() == "Add Title":
+            self.title_entry.delete(0, tk.END)
+            self.title_entry.configure(fg = "white")
 
+    def onTitleTextEntryUnfocus(self, event):
+        if self.title_entry.get() == "":
+            self.title_entry.insert(0, "Add Title")
+            self.title_entry.configure(fg = "gray")
+
+    def onTextEntryClick(self,event):  # clear Add body text on focus
+        if self.text.get("1.0", tk.END) == "Add body\n":
+            self.text.delete("1.0", tk.END)
+            self.text.configure(fg = "white")
+
+    def onTextEntryUnfocus(self, event):
+        if self.text.get("1.0", tk.END).strip() == "":
+            self.text.insert("1.0", "Add body")
+            self.text.configure(fg = "gray")
 
     def create_ask_ai(self):
         AIButton = ttk.Button(master=self, text="Ask AI")
@@ -170,11 +192,13 @@ class TextBody(tk.Frame):
 
     def create_body_text(self):
         entry = tk.Text(master=self, font=("Arial"), borderwidth=0, highlightthickness=0,
-                        spacing1 = 8, spacing3 = 8, spacing2=5)
+                        spacing1 = 8, spacing3 = 8, spacing2=5, fg="gray")
         entry.pack(side=tk.TOP, fill=tk.BOTH)
+        entry.insert(tk.END, "Add body")
         return entry
 
 
-if __name__ == "__main__":
 
+
+if __name__ == "__main__":
     root = main()

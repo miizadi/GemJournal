@@ -25,6 +25,8 @@ def readNotes():
             data = json.load(file)
             totalData.append(data)
 
+    totalData.sort(key = lambda x: -x["creationTime"])
+
     return totalData
 
 print(readNotes())
