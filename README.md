@@ -1,4 +1,4 @@
-## Project Name: GemJournal
+## GemJournal
 
 GemJournal integrates Google's Gemini AI, specifically trained as a therapeutic assistant and a support friend. Gem, our AI friend, collaborates with the journaling app to help users reflect on their emotional well-being without the guilt of venting to a friend. It proactively checks in on users, responding to their queries and providing a supportive, conversational experience.
 
