@@ -1,14 +1,14 @@
-##Project Name: GemJournal
+## Project Name: GemJournal
 
 Description: GemJournal integrates Google's Gemini AI, specifically trained as a therapeutic assistant and a support friend. Gem, our AI friend, collaborates with the journaling app to help users reflect on their emotional well-being without the guilt of venting to a friend. It proactively checks in on users, responding to their queries and providing a supportive, conversational experience.
 
-##Goal of the Project:
+## Goal of the Project:
 
 The primary goal of GemJournal is to foster a supportive environment for users to express themselves and navigate their emotional landscapes. By integrating Google's Gemini AI, trained as a therapeutic assistant and warm friend, we aim to offer a platform for reflection and a proactive companion—Gem—that offers empathy, guidance, and validation. We take a step further from self-care journaling and provide users with a friend who is there for them 24/7 without judgment. Once the user feels better, Gem can be released from existence, and the user can get back to their day guilt-free and confident. By providing the journal entries to Gem, Gem becomes a friend who knows about the user's life rather than a "stranger" AI chatbot. **This falls under the 1st track "Good to Go"**.
 
 Technical Implementation: The application is developed entirely in Python, utilizing the Tkinter module for the frontend interface. The backend leverages Google's google.generativeai library to power a chatbot capable of dynamic interactions. Users can engage with Gem, receiving empathetic responses and guidance tailored to their emotional state. 
 
-##How GemJournal Enhances Mental Wellness:
+## How GemJournal Enhances Mental Wellness:
 
 **Mindfulness**: Gem encourages users to engage in reflective writing, a practice that is closely associated with mindfulness, helping users to stay present and aware of their emotional state.
 
@@ -16,7 +16,7 @@ Technical Implementation: The application is developed entirely in Python, utili
 
 **Emotional Well-being**: The platform is designed to recognize emotional cues from users' entries and respond appropriately, promoting emotional health and resilience.
 
-##Key Features:
+## Key Features:
 
 Therapeutic AI Assistance: Gem is a supportive companion, offering users a safe space to express their feelings and seek advice.
 
@@ -24,7 +24,7 @@ Interactive Journaling: The platform allows for reflective writing, supported by
 
 Responsive Chatbot: By integrating advanced AI techniques, the chatbot adapts to user conversations, ensuring personalized and meaningful interaction.
 
-##Code Highlights:
+## Code Highlights:
 
 API Configuration and Initialization: Set up and authenticate with Google's API, preparing the Gemini model for interaction.
 
@@ -33,7 +33,7 @@ User Interface: Employ Tkinter for a robust, user-friendly interface, enabling s
 
 The backend was developed using Python and the Google generative AI library, while the front end used Tkinter.
 
-##Limitations:
+## Limitations:
 
 API Key Usage Limits: Our application relies heavily on Google's generative ai library to power Gem, the AI companion. Unfortunately, Google limits API key usage, which restricts the number of requests that can be made within a specific timeframe. This limitation can lead to downtime or degraded performance, especially during peak usage periods when many users interact with the AI simultaneously.
 
