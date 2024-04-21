@@ -31,6 +31,7 @@ class main(tk.Tk):
         self.rightSection.text_body.title_entry.bind("<KeyRelease>", self.autosave)
         self.rightSection.text_body.text.bind("<KeyRelease>", self.autosave)
         self.loadExistingJournals()
+        sv_ttk.set_theme("dark")
         self.mainloop()
 
     def autosave(self, event):
@@ -175,5 +176,5 @@ class TextBody(tk.Frame):
 
 
 if __name__ == "__main__":
-    sv_ttk.set_theme("dark")
+
     root = main()
